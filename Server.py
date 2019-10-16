@@ -1,7 +1,10 @@
 import CommonFunctions
 
 serverDomain = "AS-SERVER.DERBY.AC.UK"
-
+clientDomain = ""
+dataLast = ""
+commandsUnimplemented = {"SOML", "SEND", "SAML", "TURN"}  # Set containing unimplemented commands.
+commandsAnytime = {"NOOP", "EXPN", "VRFY", "HELP"} # Set of commands that can be executed at any time.
 
 def code211(socket):
     data = "General help reply here..."
@@ -121,18 +124,27 @@ def sendData(data, socket):
     socket.send(data)
 
 
-def commandRouter(data, socket):
-    data = data.decode()
-    command = CommonFunctions.firstWord(data)
-    commandW2 = CommonFunctions.secondWord(data)
-    cniSet={"SOML","SEND","SAML","TURN"}  # Set containing unimplemented commands.
-    if command in cniSet:
+def commandRouter(dataEnc, socket):
+    global dataLast
+    dataLast = dataEnc.decode()
+    command = CommonFunctions.firstWord(dataLast)
+    commandW2 = CommonFunctions.secondWord(dataLast)
+    if command in commandsUnimplemented:
         code502(socket)
+    elif command in commandsAnytime:
+        commandsAnytimeRouter(command, socket)
     elif command == "HELO":
         commandHELO(socket)
-    elif command == "MAIL" and commandW2 == "TO":
+    elif command == "MAIL" and commandW2 == "FROM:":
         sequenceMAIL(socket)
-    elif command == "VRFY":
+    elif command == "QUIT":
+        commandQUIT(socket)
+    else:
+        code500(socket)
+
+
+def commandsAnytimeRouter(command, socket):
+    if command == "VRFY":
         commandVRFY(socket)
     elif command == "EXPN":
         commandEXPN(socket)
@@ -140,10 +152,8 @@ def commandRouter(data, socket):
         commandHELP(socket)
     elif command == "NOOP":
         commandNOOP(socket)
-    elif command == "QUIT":
-        commandQUIT(socket)
     else:
-        code500(socket)
+        print("Wrong input")  # This would probably never occur due to the way the function is used.
 
 
 def commandHELO(socket):

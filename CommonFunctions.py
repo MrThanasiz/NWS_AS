@@ -5,7 +5,23 @@ def firstWord(string):
 
 def secondWord(string):
     stringSplit = string.split(" ")
-    if len(stringSplit) >= 1:
+    if len(stringSplit) >= 2:
         return stringSplit[1]
     else:
         return "-"
+
+
+def withoutFirstWord(string):
+    stringSplit = string.split(" ", 1)
+    if len(stringSplit) >= 2:
+        return stringSplit[1]
+    else:
+        return "too few args"
+
+
+def withoutTwoFirstWords(string):
+    stringSplit = string.split(" ", 2)
+    if len(stringSplit) >= 3:
+        return stringSplit[2]
+    else:
+        return "too few args"
