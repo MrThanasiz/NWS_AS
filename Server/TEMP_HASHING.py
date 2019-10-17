@@ -11,3 +11,12 @@ def hashPW(password):
 def validatePW(hashedPassword, salt, inputPassword):
     hashedInputPassword = hashlib.pbkdf2_hmac('sha256', inputPassword.encode(), salt, 100000)
     return hashedPassword == hashedInputPassword
+
+
+def hii():
+    print("hi")
+# Debug:#
+# ipw = "red"
+# hpw, salt = hashPW(ipw)
+# print(hpw, salt)
+# print(validatePW(hpw, salt, ipw))

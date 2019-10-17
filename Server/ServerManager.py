@@ -10,10 +10,10 @@ class EchoHandler(asyncore.dispatcher_with_send):
     def handle_read(self):
         data = self.recv(8192)
         if data:
-            # Server.commandRouter(data, self)
+            Server.commandRouter(data, self)
             # self.send(data)
-            connected = AuthServer.initiateAUTHServer(data, self)
-            print("Connected?", str(connected))
+            #connected = AuthServer.initiateAUTHServer(data, self)
+            #print("Connected?", str(connected))
 
 
 

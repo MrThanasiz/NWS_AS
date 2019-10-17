@@ -156,6 +156,7 @@ def commandQUIT(socket):
 def commandRouter(dataEnc, socket):
     global dataLast
     dataLast = dataEnc.decode()
+    dataLast = dataLast.upper()
     command = CommonFunctions.firstWord(dataLast)
     commandW2 = CommonFunctions.secondWord(dataLast)
     if command in commandsUnimplemented:
