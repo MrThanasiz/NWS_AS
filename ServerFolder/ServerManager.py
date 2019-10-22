@@ -1,20 +1,18 @@
 import asyncore
 import socket
-
-import AuthServer
 import Server
+import CommonFunctions
+
+serverInstance = Server.serverInstance()
 
 
 class EchoHandler(asyncore.dispatcher_with_send):
+    global serverInstance
 
     def handle_read(self):
         data = self.recv(8192)
         if data:
-            Server.commandRouter(data, self)
-            # self.send(data)
-            #connected = AuthServer.initiateAUTHServer(data, self)
-            #print("Connected?", str(connected))
-
+            serverInstance.commandRouter(data, self)
 
 
 class EchoServer(asyncore.dispatcher):
@@ -32,7 +30,7 @@ class EchoServer(asyncore.dispatcher):
             sock, addr = pair
             print('Incoming connection from %s' % repr(addr))
             handler = EchoHandler(sock)
-            Server.code220(sock) # TODO
+            #Server.code220(sock)  # TODO
 
 
 server = EchoServer('127.0.0.1', 8080)

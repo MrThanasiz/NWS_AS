@@ -3,6 +3,9 @@ import os
 import TEMP_HASHING
 import pickle
 
+# accountUserRegistry & accountEmailRegistry aren't global here
+# doing so would mean changing implementation of commands that apply to both
+
 
 class accountUser:
     def __init__(self, username, passwordHashed, salt, mailset):
@@ -14,6 +17,13 @@ class accountUser:
     def getIdentifier(self):
         return self.username
 
+    def printAccountData(self):
+        print("Address:  " + self.address)
+        print("password: " + self.passwordHashed)
+        print("Salt:     " + self.salt)
+        print("Mailset:  "+  self.mailset)
+
+
 
 class accountEmail:
     def __init__(self, address, passwordHashed, salt):
@@ -23,6 +33,12 @@ class accountEmail:
 
     def getIdentifier(self):
         return self.address
+
+    def printAccountData(self):
+        print("Address:  " + self.address)
+        print("password: " + self.passwordHashed)
+        print("Salt:     " + self.salt)
+
 
 
 class email:
@@ -119,3 +135,29 @@ def accountsLoad(accountsType):
         accountsRegistry = pickle.load(f)
         f.close()
     return accountsRegistry
+
+def commandVRFY(accountEmailRegistry,prefix):
+    acclist=[]
+    for account in accountEmailRegistry:
+        email = account.getIdentifier()
+        split = email.split("@")
+        if split[0]==prefix:
+            acclist.append(account)
+    if len(acclist) == 0:
+        return "550 String does not match anything."
+    elif len(acclist) == 1:
+        return "250 " + "<" + acclist[0].getIdentifier() + ">"
+    else:
+        return "553 User ambiguous."
+
+mailreg=[]
+mail1 = accountEmail("thanos@gmail.com","oopsie","001")
+accountAdd(mailreg,mail1)
+#mail1 = accountEmail("thanos@hotmail.com","oopsie","001")
+#accountAdd(mailreg,mail1)
+mail1 = accountEmail("thanos1@hotmail.com","oopsie","001")
+accountAdd(mailreg,mail1)
+
+#for account in mailreg:
+#    account.printAccountData()
+print(commandVRFY(mailreg,"thanos"))
