@@ -7,7 +7,7 @@ accountEmailRegistry = Storage.accountsLoad("Email")
 accountUserRegistry = Storage.accountsLoad("User")
 print("FILES LOADED")
 commandsUnimplemented = {"SOML", "SEND", "SAML", "TURN"}  # Set containing unimplemented commands.
-commandsAnytime = {"NOOP", "EXPN", "VRFY", "HELP"}  # Set of commands that can be executed at any time.
+commandsAnytime = {"NOOP", "EXPN", "VRFY", "HELP", "QUIT"}  # Set of commands that can be executed at any time.
 commandsImplemented = {"HELO","QUIT","MAIL FROM:","RCPT TO:","DATA","RSET","NOOP", "EXPN", "VRFY", "HELP","EHLO"}
 
 
@@ -16,57 +16,144 @@ class serverInstance:
         self.state = "keyExchange"
         self.transferKey = 0
         self.secrServer = SecurityServer.securityServer()
-
+        self.subStateMail = "init"
+        self.mailFromBuffer = ""
+        self.rcptBuffer = []
+        self.dataBuffer = ""
 
     def commandRouter(self, dataEnc, socket):
 
-
         if self.state == "keyExchange":
             dataDec = dataEnc.decode()
-            self.transferKey, completed = (self.secrServer.initiateKeyExchangeServer(dataDec, socket))
-            if completed:
-                self.state = "default"
-                print(str(self.transferKey))
+            self.stateKeyExchange(dataDec, socket)
 
         elif self.state == "login":
-
-            self.state="default"
+            dataDec = self.secrServer.decryptData(dataEnc).decode()
+            self.stateLogin(dataDec, socket)
 
         elif self.state == "default":
-            dataDec = self.secrServer.decryptData(dataEnc).decode().upper()
-            command = CommonFunctions.commandOnly(dataDec).upper()
-            arguement = CommonFunctions.arguementOnly(dataDec).upper()
+            dataDec = self.secrServer.decryptData(dataEnc).decode()
+            self.stateDefault(dataDec, socket)
 
-            print("State:" + self.state + " Data:" + dataDec + " Command:"+ command + " Arguement:" + arguement)
-            if command in commandsUnimplemented:
-                self.code502(socket)
-            elif command in commandsAnytime:
-                self.commandsAnytimeRouter(dataDec, socket)
-            elif command == "HELO":
-                self.commandHELO(socket)
-            elif command == "MAIL FROM:":
-                self.state = "mail"
-                self.sequenceMAIL(socket)
-            elif command == "QUIT":
-                self.commandQUIT(socket)
+        elif self.state == "mail":
+            dataDec = self.secrServer.decryptData(dataEnc).decode()
+            self.stateMAIL(dataDec, socket)
+        else:
+            print("Command couldn't be routed")
+            self.code421(socket)
+
+    def stateKeyExchange(self, dataDec, socket):
+        self.transferKey, completed = (self.secrServer.initiateKeyExchangeServer(dataDec, socket))
+        if completed:
+            self.state = "login"
+            print(str(self.transferKey))
+
+    def stateLogin(self, dataDec, socket):
+        command = CommonFunctions.commandOnly(dataDec).upper()
+        arguement = CommonFunctions.arguementOnly(dataDec)
+        if (command == "REGISTER" or command == "LOGIN") and CommonFunctions.numberOfWords(arguement) == 2:
+            userName = CommonFunctions.firstWord(arguement)
+            userPass = CommonFunctions.secondWord(arguement)
+            if len(userName) >= 6 and len(userPass) >= 6:
+                if command == "REGISTER":
+                    print("register") # TODO
+                else:
+                    print("login") # TODO
+            else:
+                self.code501(" Username and Password must be atleast 6 characters long")
+        else:
+            self.code501(" Available commands: \n"
+                         "login <username> <password> \n"
+                         "register <username> <password>", socket)
+
+    def stateDefault(self, dataDec, socket):
+
+        command = CommonFunctions.commandOnly(dataDec)
+        arguement = CommonFunctions.arguementOnly(dataDec)
+        print("State:" + self.state + " Data:" + dataDec + " Command:" + command + " Arguement:" + arguement)
+
+        if command in commandsUnimplemented:
+            self.code502(socket)
+        elif command in commandsAnytime:
+            self.commandsAnytimeRouter(dataDec, socket)
+        elif command == "LOGOUT":
+            self.state = "login"
+        elif command == "HELO":
+            self.commandHELO(socket)
+        elif command == "MAIL FROM:":
+            if arguement == "-":
+                self.code501(" You need to specify the sender address.", socket)
+            else:
+                validity = CommonFunctions.mailValidation(arguement)
+                if validity == "OK":
+                    self.state = "mail"
+                    self.subStateMail = "init"
+                    self.sequenceMAIL(dataDec, socket)
+                else:
+                    self.code501(validity, socket)
+        else:
+            self.code500(socket)
+
+    def stateMAIL(self, dataDec, socket):
+        command = CommonFunctions.commandOnly(dataDec)
+        arguement = CommonFunctions.arguementOnly(dataDec)
+        print("State:" + self.state + " Data:" + dataDec + " Command:" + command + " Arguement:" + arguement)
+
+        if self.subStateMail == "data":
+            if dataDec == ".":
+                for rcpt in self.rcptBuffer:
+                    temp = Storage.email(self.mailFromBuffer, rcpt, self.dataBuffer)
+                    temp.saveEmail()
+                    self.commandRSET(socket)
+            else:
+                self.dataBuffer = self.dataBuffer + dataDec + "\n"
+                self.code250(socket, " OK")
+
+        elif command in commandsAnytime:
+            self.commandsAnytimeRouter(dataDec, socket)
+
+        elif command == "RSET":
+            self.commandRSET()
+
+        elif self.subStateMail == "init":
+            self.mailFromBuffer = arguement[1:-1]
+            self.subStateMail = "rcpt"
+            self.code250(socket, " OK")
+
+        elif self.subStateMail == "rcpt":
+            if command == "RCPT TO:":
+                validity = CommonFunctions.mailValidation(arguement)
+                if validity == "OK":
+                    self.rcptBuffer.append(arguement[1:-1])
+                    self.code250(socket, " OK")
+                else:
+                    self.code553(validity, socket)
+            elif command == "DATA":
+                if len(self.rcptBuffer) == 0:
+                    self.code503(socket)
+                else:
+                    self.subStateMail = "data"
+                    self.code354(socket)
             else:
                 self.code500(socket)
 
 
     def commandsAnytimeRouter(self, data, socket):
-        command = CommonFunctions.commandOnly(data).upper()
-        arguement = CommonFunctions.arguementOnly(data).upper()
+        command = CommonFunctions.commandOnly(data)
+        arguement = CommonFunctions.arguementOnly(data)
         if command == "VRFY":
             if commandW2!="-" and CommonFunctions.numberOfWords(data)==2:
                 self.commandVRFY(commandW2, socket)
             else:
-                self.code501(socket)
+                self.code501("", socket)
         elif command == "EXPN":
             self.commandEXPN(socket)
         elif command == "HELP":
             self.commandHELP(arguement, socket)
         elif command == "NOOP":
             self.commandNOOP(socket)
+        elif command == "QUIT":
+            self.commandQUIT(socket)
         else:
             print("Wrong input")  # This would probably never occur due to the way the function is used.
 
@@ -76,16 +163,12 @@ class serverInstance:
         self.code250(socket, message)
 
 
-    def mailProcess(self, dataDec, socket):
-        print("Ok")
-        # process mail
-
-
-    def sequenceMAIL(self, socket):  # TODO THIS
-        self.code250(socket, " TODO sequence mail")
-
-
     def commandRSET(self, socket):
+        self.state = "default"
+        self.subStateMail = "init"
+        self.mailFromBuffer = ""
+        self.rcptBuffer = []
+        self.dataBuffer = ""
         self.code250(socket, " OK")
 
 
@@ -100,11 +183,12 @@ class serverInstance:
 
 
     def commandHELP(self, arguement, socket):
-        if arguement == "-":
+        command = arguement.upper()
+        if command == "-":
             self.code211(socket)
         else:
-            if arguement in commandsImplemented:
-                self.code214(arguement,socket)
+            if command in commandsImplemented:
+                self.code214(command,socket)
             else:
                 self.code504(socket)
 
@@ -220,8 +304,8 @@ class serverInstance:
         CommonFunctions.sendData(data, socket, self.secrServer)
 
 
-    def code501(self, socket):
-        data = "501 Syntax error in parameters or arguments"
+    def code501(self, message, socket):
+        data = "501 Syntax error in parameters or arguments" + message
         CommonFunctions.sendData(data, socket, self.secrServer)
 
 
@@ -257,8 +341,8 @@ class serverInstance:
         CommonFunctions.sendData(data, socket, self.secrServer)
 
 
-    def code553(self, socket):
-        data = "553 Requested action not taken: mailbox name not allowed"
+    def code553(self, message, socket):
+        data = "553 Requested action not taken: mailbox name not allowed" + message
         # [E.g., mailbox syntax incorrect]
         CommonFunctions.sendData(data, socket, self.secrServer)
 

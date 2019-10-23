@@ -70,8 +70,7 @@ class email:
         date = datetime.datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
         f.write("From: " + self.mailFrom + "\n" +
                 "To:" + self.rcptTo + "\n" +
-                "At: " + date + "\n" +
-                "Flags: TODO!!!" + "\n \n" +  # TODO
+                "At: " + date + "\n \n" +
                 self.contents)
         f.close()
 

@@ -1,6 +1,6 @@
 import socket
 import SecurityClient
-
+import time
 HOST = '127.0.0.1'  # The server's hostname or IP address
 PORT = 8080         # The port used by the server
 clientDomain = "AS-CLIENT.DERBY.AC.UK"
@@ -24,9 +24,12 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     print(str(transferKey))
     while running == 1:
         message = input("Message for server:")
+        if message == "":
+            message == " "
         print(message)
         message = SecClient.encryptData(message)
         s.sendall(message)
+        time.sleep(0.05)
         data = recieveData(s,SecClient)
         print(data)
 
