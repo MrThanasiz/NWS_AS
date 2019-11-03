@@ -31,5 +31,8 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.sendall(message)
         time.sleep(0.05)
         data = recieveData(s,SecClient)
+        while len(data) >= 4 and data[3] == "-":
+            print(data)
+            data = recieveData(s, SecClient)
         print(data)
 

@@ -3,6 +3,9 @@ import random
 import time
 import blowfish
 from os import urandom
+import hashlib
+import os
+
 
 
 class securityServer:
@@ -60,3 +63,15 @@ class securityServer:
     def decryptData(self, data):
         dataDecrypted = b"".join(self.cipher.decrypt_cfb(data, self.biv))
         return dataDecrypted
+
+
+def hashPW(password):
+    salt = os.urandom(16)
+    hashedPassword = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100000)
+    return hashedPassword, salt
+
+
+def validatePW(hashedPassword, salt, inputPassword):
+    hashedInputPassword = hashlib.pbkdf2_hmac('sha256', inputPassword.encode(), salt, 100000)
+    return hashedPassword == hashedInputPassword
+

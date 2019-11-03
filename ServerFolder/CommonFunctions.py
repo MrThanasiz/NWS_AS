@@ -28,7 +28,7 @@ def commandOnly(string):
     return commandOnly
 
 
-def arguementOnly(string):
+def argumentOnly(string):
     word1 = firstWord(string)
     word2 = secondWord(string)
     if (word1.upper() == "MAIL" and word2.upper() == "FROM:") or (word1.upper() == "RCPT" and word2.upper() == "TO:"):
@@ -43,15 +43,15 @@ def arguementOnly(string):
         stringSplit = string.split(" ", 1)
         return stringSplit[1]
 
-def mailValidation(arguement):
+def mailValidation(argument):
     charset = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.@"
 
-    if arguement[0] == "<" and arguement[-1] == ">":
-        arguement = arguement[1:-1]
-        arguement = arguement.split("@")
-        if len(arguement) == 2:
-            if all(char in charset for char in arguement[0]):
-                if len(arguement[1].split(".")) >1:
+    if argument[0] == "<" and argument[-1] == ">":
+        argument = argument[1:-1]
+        argument = argument.split("@")
+        if len(argument) == 2:
+            if all(char in charset for char in argument[0]):
+                if len(argument[1].split(".")) >1:
                     return "OK"
                 else:
                     return "Domain name must include atleast 1 period (.)"
@@ -63,9 +63,9 @@ def mailValidation(arguement):
         return "Sender address must be enclosed in \"< >\" "
 
 
-def userpassValidate(arguement):
-    charset = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()[]{}-=_+,./<>?|"
-    if all(char in charset for char in arguement[0]):
+def userpassValidate(argument):
+    charset = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()-=_+,.?"
+    if all(char in charset for char in argument) and len(argument) >=6:
         return True
     else:
         return False

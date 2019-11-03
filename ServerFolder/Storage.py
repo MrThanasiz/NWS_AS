@@ -1,6 +1,6 @@
 import datetime
 import os
-import TEMP_HASHING
+import SecurityServer
 import pickle
 
 # accountUserRegistry & accountEmailRegistry aren't global here
@@ -8,11 +8,11 @@ import pickle
 
 
 class accountUser:
-    def __init__(self, username, passwordHashed, salt, mailset):
+    def __init__(self, username, passwordHashed, salt, mailSet):
         self.username = username
         self.passwordHashed = passwordHashed
         self.salt = salt
-        self.mailset = mailset
+        self.mailSet = mailSet
 
     def getIdentifier(self):
         return self.username
@@ -39,6 +39,14 @@ class accountEmail:
         print("password: " + self.passwordHashed)
         print("Salt:     " + self.salt)
 
+
+class mailingList:
+    def __init__(self, name, mailList):
+        self.name = name
+        self.mailList = mailList
+
+    def getIdentifier(self):
+        return self.name
 
 
 class email:
@@ -70,7 +78,7 @@ class email:
         date = datetime.datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
         f.write("From: " + self.mailFrom + "\n" +
                 "To:" + self.rcptTo + "\n" +
-                "At: " + date + "\n \n" +
+                "Sent: " + date + "\n \n" +
                 self.contents)
         f.close()
 
@@ -80,6 +88,12 @@ def accountUserEmailAdd(accountUserRegistry, username, address):
         if account.username == username:
             account.mailset.add(address)
 
+
+def accountUserEmailExists(accountUserRegistry, username, address):
+    for account in accountUserRegistry:
+        if account.username == username:
+            return True
+    return False
 
 def accountUserEmailRemove(accountUserRegistry, username, address):
     for account in accountUserRegistry:
@@ -101,19 +115,27 @@ def accountDelete(accountsRegistry, identity):
     return accountsRegistry
 
 
-def accountAddressExists(accountsRegistry, identity):
+def accountExists(accountsRegistry, identity):
     # can be used for both Email & User type accounts
     for account in accountsRegistry:
         if account.getIdentifier() == identity:
             return True
     return False
 
+def accountGet(accountsRegistry, identity):
+    for account in accountsRegistry:
+        if account.getIdentifier == identity:
+            return account
+
 
 def accountValidateLogin(accountsRegistry, identity, password):
     # can be used for both Email & User type accounts
     for account in accountsRegistry:
         if account.getIdentifier() == identity:
-            return TEMP_HASHING.validatePW(account[1], account[2], password)
+            return SecurityServer.validatePW(account.passwordHashed, account.salt, password)
+        else:
+            return False
+    return False
 
 
 def accountsSave(accountsRegistry, accountsType):
@@ -129,7 +151,8 @@ def accountsLoad(accountsType):
     try:
         f = open(filename, "rb")
     except FileNotFoundError:
-        print("File not found...")
+        print("404 - Returing Empty Variable")
+        return accountsRegistry
     else:
         accountsRegistry = pickle.load(f)
         f.close()
@@ -149,14 +172,14 @@ def commandVRFY(accountEmailRegistry,prefix):
     else:
         return "553 User ambiguous."
 
-mailreg=[]
-mail1 = accountEmail("thanos@gmail.com","oopsie","001")
-accountAdd(mailreg,mail1)
+#mailreg=[]
+#mail1 = accountEmail("thanos@gmail.com","oopsie","001")
+#accountAdd(mailreg,mail1)
 #mail1 = accountEmail("thanos@hotmail.com","oopsie","001")
 #accountAdd(mailreg,mail1)
-mail1 = accountEmail("thanos1@hotmail.com","oopsie","001")
-accountAdd(mailreg,mail1)
+#mail1 = accountEmail("thanos1@hotmail.com","oopsie","001")
+#accountAdd(mailreg,mail1)
 
 #for account in mailreg:
 #    account.printAccountData()
-print(commandVRFY(mailreg,"thanos"))
+#print(commandVRFY(mailreg,"thanos"))
