@@ -82,6 +82,17 @@ class email:
                 self.contents)
         f.close()
 
+def accountUserListEmail(accountUserRegistry, username):
+    for account in accountUserRegistry:
+        if account.username == username:
+            print("ok")
+
+def accountUserViewEmail(accountUserRegistry, username, emailid):
+    print("ok")
+
+def accountUserDeleteEmail(accountUserRegistry, username, emailid):
+    print("ok")
+
 
 def accountUserEmailAdd(accountUserRegistry, username, address):
     for account in accountUserRegistry:

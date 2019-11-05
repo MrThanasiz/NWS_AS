@@ -15,11 +15,11 @@ commandsImplemented = {"HELO","QUIT","MAIL FROM:","RCPT TO:","DATA","RSET","NOOP
  # primary use of commandsImplemented is for the command help
 
 
-class serverInstance:
+class responseProcessor:
     def __init__(self):
         self.state = "keyExchange"
         self.transferKey = 0
-        self.secrServer = SecurityServer.securityServer()
+        self.securityServer = SecurityServer.securityServer()
         self.subStateMail = "init"
         self.mailFromBuffer = ""
         self.rcptBuffer = []
@@ -27,38 +27,38 @@ class serverInstance:
         self.clientDomain = "-"
         self.currentUser = []
 
-    def commandRouter(self, dataEnc, socket):
+    def commandRouter(self, dataEnc, module):
 
         if self.state == "keyExchange":
             dataDec = dataEnc.decode()
-            self.stateKeyExchange(dataDec, socket)
+            self.stateKeyExchange(dataDec, module)
 
         elif self.state == "login":
-            dataDec = self.secrServer.decryptData(dataEnc).decode()
-            self.stateLogin(dataDec, socket)
+            dataDec = self.securityServer.decryptData(dataEnc).decode()
+            self.stateLogin(dataDec, module)
 
         elif self.state == "greetings":
-            dataDec = self.secrServer.decryptData(dataEnc).decode()
-            self.stateGreetings(dataDec, socket)
+            dataDec = self.securityServer.decryptData(dataEnc).decode()
+            self.stateGreetings(dataDec, module)
 
         elif self.state == "default":
-            dataDec = self.secrServer.decryptData(dataEnc).decode()
-            self.stateDefault(dataDec, socket)
+            dataDec = self.securityServer.decryptData(dataEnc).decode()
+            self.stateDefault(dataDec, module)
 
         elif self.state == "mail":
-            dataDec = self.secrServer.decryptData(dataEnc).decode()
-            self.stateMail(dataDec, socket)
+            dataDec = self.securityServer.decryptData(dataEnc).decode()
+            self.stateMail(dataDec, module)
         else:
             print("Command couldn't be routed state unknown")
-            self.code421(socket)
+            self.code421(module)
 
-    def stateKeyExchange(self, dataDec, socket):
-        self.transferKey, completed = (self.secrServer.initiateKeyExchangeServer(dataDec, socket))
+    def stateKeyExchange(self, dataDec, module):
+        self.transferKey, completed = (self.securityServer.initiateKeyExchangeServer(dataDec, module))
         if completed:
             self.state = "login"
             print(str(self.transferKey))
 
-    def stateLogin(self, dataDec, socket):
+    def stateLogin(self, dataDec, module):
         command = CommonFunctions.commandOnly(dataDec).upper()
         argument = CommonFunctions.argumentOnly(dataDec)
         if (command == "REGISTER" or command == "LOGIN") and CommonFunctions.numberOfWords(argument) == 2:
@@ -66,63 +66,63 @@ class serverInstance:
             userPass = CommonFunctions.secondWord(argument)
             if CommonFunctions.userpassValidate(userName) and CommonFunctions.userpassValidate(userPass):
                 if command == "REGISTER":
-                    self.commandREGISTER(argument, socket)
+                    self.commandREGISTER(argument, module)
                 else:
-                    self.commandLOGIN(argument, socket)
+                    self.commandLOGIN(argument, module)
             else:
-                self.code503(" Username and Password must be atleast 6 characters long and CAN contain numbers, letters including the following symbols !@#$%^&*()-=_+,.?", socket)
+                self.code503(" Username and Password must be atleast 6 characters long and CAN contain numbers, letters including the following symbols !@#$%^&*()-=_+,.?", module)
         else:
             self.code501(" Available commands: \n"
                          "login <username> <password> \n"
-                         "register <username> <password>", socket)
+                         "register <username> <password>", module)
 
-    def stateGreetings(self, dataDec, socket):
+    def stateGreetings(self, dataDec, module):
 
         command = CommonFunctions.commandOnly(dataDec)
         argument = CommonFunctions.argumentOnly(dataDec)
         print("State:" + self.state + " Data:" + dataDec + " Command:" + command + " argument:" + argument)
 
         if command in commandsAnytime:
-            self.commandsAnytimeRouter(dataDec, socket)
+            self.commandsAnytimeRouter(dataDec, module)
         elif command == "HELO":
-            self.commandHELO(argument, socket)
+            self.commandHELO(argument, module)
         elif command == "EHLO":
-            self.commandEHLO(argument, socket)
+            self.commandEHLO(argument, module)
         elif command in commandsImplemented:
-            self.code503("", socket)
+            self.code503("", module)
         else:
-            self.code500(socket)
+            self.code500(module)
         if self.clientDomain != "-":
             self.state = "default"
 
-    def stateDefault(self, dataDec, socket):
+    def stateDefault(self, dataDec, module):
 
         command = CommonFunctions.commandOnly(dataDec)
         argument = CommonFunctions.argumentOnly(dataDec)
         print("State:" + self.state + " Data:" + dataDec + " Command:" + command + " argument:" + argument)
 
         if command in commandsUnimplemented:
-            self.code502(socket)
+            self.code502(module)
         elif command in commandsAnytime:
-            self.commandsAnytimeRouter(dataDec, socket)
+            self.commandsAnytimeRouter(dataDec, module)
         elif command == "LOGOUT":
-            self.commandLOGOUT(socket)
+            self.commandLOGOUT(module)
         elif command == "REGMAIL":
-            self.commandREGMAIL(argument, socket)
+            self.commandREGMAIL(argument, module)
         elif command == "ADDMAIL":
-            self.commandADDMAIL(argument, socket)
+            self.commandADDMAIL(argument, module)
         elif command == "RMVMAIL":
-            self.commandRMVMAIL(argument, socket)
+            self.commandRMVMAIL(argument, module)
         elif command == "HELO":
-            self.commandHELO(argument, socket)
+            self.commandHELO(argument, module)
         elif command == "EHLO":
-            self.commandEHLO(argument, socket)
+            self.commandEHLO(argument, module)
         elif command == "MAIL FROM:":
-            self.commandMAIL(argument, socket)
+            self.commandMAIL(argument, module)
         else:
-            self.code500(socket)
+            self.code500(module)
 
-    def stateMail(self, dataDec, socket):
+    def stateMail(self, dataDec, module):
         command = CommonFunctions.commandOnly(dataDec)
         argument = CommonFunctions.argumentOnly(dataDec)
         print("State:" + self.state + " Data:" + dataDec + " Command:" + command + " argument:" + argument)
@@ -133,15 +133,15 @@ class serverInstance:
                     temp = Storage.email(self.mailFromBuffer, rcpt, self.dataBuffer)
                     temp.saveEmail()
                     Auditing.logMail(self.mailFromBuffer, rcpt)
-                self.commandRSET(socket)
+                self.commandRSET(module)
             else:
                 if dataDec[0] == ".":
                     dataDec = dataDec[1:]
                 self.dataBuffer = self.dataBuffer + dataDec + "\n"
-                self.code250(" OK", socket)
+                self.code250(" OK", module)
 
         elif command in commandsAnytime:
-            self.commandsAnytimeRouter(dataDec, socket)
+            self.commandsAnytimeRouter(dataDec, module)
 
         elif command == "RSET":
             self.commandRSET()
@@ -149,43 +149,43 @@ class serverInstance:
         elif self.subStateMail == "init":
             self.mailFromBuffer = argument[1:-1]
             self.subStateMail = "rcpt"
-            self.code250(" OK", socket)
+            self.code250(" OK", module)
 
         elif self.subStateMail == "rcpt":
             if command == "RCPT TO:":
                 validity = CommonFunctions.mailValidation(argument)
                 if validity == "OK":
                     self.rcptBuffer.append(argument[1:-1])
-                    self.code250(" OK", socket)
+                    self.code250(" OK", module)
                 else:
-                    self.code553(validity, socket)
+                    self.code553(validity, module)
             elif command == "DATA":
                 if len(self.rcptBuffer) == 0:
-                    self.code503("", socket)
+                    self.code503("", module)
                 else:
                     self.subStateMail = "data"
-                    self.code354(socket)
+                    self.code354(module)
             else:
-                self.code500(socket)
+                self.code500(module)
 
 
-    def commandsAnytimeRouter(self, data, socket):
+    def commandsAnytimeRouter(self, data, module):
         command = CommonFunctions.commandOnly(data)
         argument = CommonFunctions.argumentOnly(data)
         if command == "VRFY":
-            self.commandVRFY(argument, socket)
+            self.commandVRFY(argument, module)
         elif command == "EXPN":
-            self.commandEXPN(argument, socket)
+            self.commandEXPN(argument, module)
         elif command == "HELP":
-            self.commandHELP(argument, socket)
+            self.commandHELP(argument, module)
         elif command == "NOOP":
-            self.commandNOOP(socket)
+            self.commandNOOP(module)
         elif command == "QUIT":
-            self.commandQUIT(socket)
+            self.commandQUIT(module)
         else:
             print("Wrong input")  # This would probably never occur due to the way the function is used.
 
-    def commandREGISTER(self, argument, socket):
+    def commandREGISTER(self, argument, module):
         userName = CommonFunctions.firstWord(argument)
         userPass = CommonFunctions.secondWord(argument)
         hashedPassword, salt = SecurityServer.hashPW(userPass)
@@ -193,10 +193,10 @@ class serverInstance:
         global accountUserRegistry
         Storage.accountAdd(accountUserRegistry, tuser)
         Storage.accountsSave(accountUserRegistry, "User")
-        self.code250(" Account Registered Successfuly, Log in.", socket)
+        self.code250(" Account Registered Successfuly, Log in.", module)
 
 
-    def commandLOGIN(self, argument, socket):
+    def commandLOGIN(self, argument, module):
         userName = CommonFunctions.firstWord(argument)
         userPass = CommonFunctions.secondWord(argument)
         global accountUserRegistry
@@ -204,118 +204,117 @@ class serverInstance:
             self.currentUser = Storage.accountGet(accountUserRegistry, userName)
             self.state = "greetings"
             Auditing.logLoginAttempt(userName,True)
-            self.code250(" Logged in successfully", socket)
+            self.code250(" Logged in successfully", module)
         else:
             Auditing.logLoginAttempt(userName, False)
-            self.code554(", username password pair doesn't exist, try again.", socket)
+            self.code554(", username password pair doesn't exist, try again.", module)
 
 
 
-    def commandLOGOUT(self, socket):
+    def commandLOGOUT(self, module):
         self.state = "login"
         self.currentUser = []
         self.clientDomain = "-"
-        self.code250(" Logged out successfully", socket)
+        self.code250(" Logged out successfully", module)
 
-    def commandMAIL(self, argument, socket):
+    def commandMAIL(self, argument, module):
         if argument == "-":
-            self.code501(" You need to specify the sender address.", socket)
+            self.code501(" You need to specify the sender address.", module)
         else:
             validity = CommonFunctions.mailValidation(argument)
             if validity == "OK":
                 self.state = "mail"
                 self.subStateMail = "init"
-                self.sequenceMAIL(dataDec, socket)
+                self.sequenceMAIL(dataDec, module)
             else:
-                self.code501(validity, socket)
+                self.code501(validity, module)
 
-    def commandHELO(self, argument, socket):
+    def commandHELO(self, argument, module):
         self.clientDomain = argument
         message = " " + serverDomain
-        self.code250(message, socket)
+        self.code250(message, module)
 
-    def commandEHLO(self, argument, socket):
+    def commandEHLO(self, argument, module):
         self.clientDomain = argument
         message = "-" + serverDomain + " Hello " + self.clientDomain
-        self.code250(message, socket)
-        time.sleep(0.05)
-        message = "-LOGOUT"
-        self.code250(message, socket)
-        time.sleep(0.05)
+        self.code250(message, module)
         message = "-MMAN"
-        self.code250(message, socket)
-        time.sleep(0.05)
+        self.code250(message, module)
+        message = "-LOGOUT"
+        self.code250(message, module)
         message = "-EXPN"
-        self.code250(message, socket)
-        time.sleep(0.05)
+        self.code250(message, module)
         message = "-VRFY"
-        self.code250(message, socket)
-        time.sleep(0.05)
+        self.code250(message, module)
         message = "-REGMAIL"
-        self.code250(message, socket)
-        time.sleep(0.05)
+        self.code250(message, module)
         message = "-ADDMAIL"
-        self.code250(message, socket)
-        time.sleep(0.05)
+        self.code250(message, module)
         message = "-RMVMAIL"
-        self.code250(message, socket)
-        time.sleep(0.05)
-        self.commandRSET(socket)
+        self.code250(message, module)
+        self.commandRSET(module)
 
 
-    def commandRSET(self, socket):
+    def commandRSET(self, module):
         if self.state != "greetings":
             self.state = "default"
             self.subStateMail = "init"
             self.mailFromBuffer = ""
             self.rcptBuffer = []
             self.dataBuffer = ""
-        self.code250(" OK", socket)
+        self.code250(" OK", module)
 
 
 
-    def commandVRFY(self, argument, socket):
+    def commandVRFY(self, argument, module):
         if argument != "-" and CommonFunctions.numberOfWords(data) == 2:
             global accountEmailRegistry
             data = Storage.commandVRFY(accountEmailRegistry, argument)
-            CommonFunctions.sendData(data, socket, self.secrServer)
+            CommonFunctions.sendData(data, module, self.securityServer)
         else:
-            self.code501("", socket)
+            self.code501("", module)
 
 
-    def commandEXPN(self, argument, socket):
+    def commandEXPN(self, argument, module):
         if self.clientDomain == "-":
-            self.code550(" No access", socket)
+            self.code550(" No access", module)
         else:
             if Storage.accountExists(emailListRegistry, argument):
-                mailList = Storage.accountSearch(emailListRegistry, argument)
-                for i in range(len(mailingList.mailList) - 1):
-                    self.code250("-" + mailingList.mailList[i], socket)
-                self.code250(" " + mailingList.mailList[-1], socket)
+                mailListAcc = Storage.accountGet(emailListRegistry, argument)
+                for i in range(len(mailListAcc.mailList) - 1):
+                    self.code250("-" + mailListAcc.mailList[i], module)
+                self.code250(" " + mailListAcc.mailList[-1], module)
             else:
-                self.code550(" List not found", socket)
+                self.code550(",  not found", module)
 
 
-    def commandHELP(self, argument, socket):
+    def commandHELP(self, argument, module):
         command = argument.upper()
         if command == "-":
-            self.code211(socket)
+            self.code211(module)
         else:
             if command in commandsImplemented:
-                self.code214(command,socket)
+                self.code214(command,module)
             else:
-                self.code504(socket)
+                self.code504(module)
 
 
-    def commandNOOP(self, socket):
-        self.code250(" OK", socket)
+    def commandNOOP(self, module):
+        self.code250("+OK1", module)
+        time.sleep(0.1)
+        self.code250("+OK2", module)
+        time.sleep(0.1)
+        self.code250("+OKffafafdsf3", module)
+        time.sleep(0.1)
+        self.code250(" OK", module)
 
 
-    def commandQUIT(self, socket):
-        self.code221(socket)
-        socket.close()
 
-    def commandREGMAIL(self, argument, socket):
+    def commandQUIT(self, module):
+        self.code221(module)
+        module.close()
+
+    def commandREGMAIL(self, argument, module):
         address = CommonFunctions.firstWord(argument)
         addressPass = CommonFunctions.secondWord(argument)
         mailValid = CommonFunctions.mailValidation(address)
@@ -328,12 +327,12 @@ class serverInstance:
                 global accountEmailRegistry
                 Storage.accountAdd(accountEmailRegistry, tmail)
                 Storage.accountsSave(accountEmailRegistry, "Email")
-                self.code250(" Email Account Registered Successfuly. Don't forget to add it to your User Account", socket)
+                self.code250(" Email Account Registered Successfuly. Don't forget to add it to your User Account", module)
             else:
-                self.code503(" Password must be atleast 6 characters long and CAN contain numbers, letters including the following symbols !@#$%^&*()-=_+,.?", socket)
+                self.code503(" Password must be atleast 6 characters long and CAN contain numbers, letters including the following symbols !@#$%^&*()-=_+,.?", module)
         else:
-            self.code501(mailValid, socket)
-    def commandADDMAIL(self, argument, socket):
+            self.code501(mailValid, module)
+    def commandADDMAIL(self, argument, module):
         address = CommonFunctions.firstWord(argument)
         addressPass = CommonFunctions.secondWord(argument)
         mailValid = CommonFunctions.mailValidation(address)
@@ -343,15 +342,15 @@ class serverInstance:
                 if Storage.accountValidateLogin(accountEmailRegistry, address, addressPass):
                     Storage.accountUserEmailAdd(accountUserRegistry, self.currentUser.getIdentifier(), address)
                     Storage.accountsSave(accountUserRegistry, "User")
-                    self.code250(" Email added successfully", socket)
+                    self.code250(" Email added successfully", module)
                 else:
-                    self.code550(" Email Password pair doesn't match anything.", socket)
+                    self.code550(" Email Password pair doesn't match anything.", module)
             else:
-                self.code503(" Password must be atleast 6 characters long and CAN contain numbers, letters including the following symbols !@#$%^&*()-=_+,.?", socket)
+                self.code503(" Password must be atleast 6 characters long and CAN contain numbers, letters including the following symbols !@#$%^&*()-=_+,.?", module)
         else:
-            self.code501(", " + mailValid, socket)
+            self.code501(", " + mailValid, module)
 
-    def commandRMVMAIL(self, argument, socket):
+    def commandRMVMAIL(self, argument, module):
         address = argument
         mailValid = CommonFunctions.mailValidation(address)
         if mailValid == "OK":
@@ -359,13 +358,13 @@ class serverInstance:
                 if Storage.accountUserEmailExists(accountUserRegistry, self.currentUser.getIdentifier(), address):
                     Storage.accountUserEmailRemove(accountUserRegistry, self.currentUser.getIdentifier(), address)
                     Storage.accountsSave(accountUserRegistry, "User")
-                    self.code250(" Email removed successfully", socket)
+                    self.code250(" Email removed successfully", module)
                 else:
-                    self.code550(" Email not in current users emails.", socket)
+                    self.code550(" Email not in current users emails.", module)
         else:
-            self.code501(mailValid, socket)
+            self.code501(mailValid, module)
 
-    def code211(self, socket):
+    def code211(self, module):
         data = "For more information on a specific command, type HELP command-name \n" \
                "HELO          Identifies the sender-SMTP to the receiver-SMTP. \n" \
                "QUIT          Specifies that the receiver must send an OK reply, and then close the transmission channel. \n" \
@@ -378,9 +377,9 @@ class serverInstance:
                "NOOP          No action other than to send send an OK reply to the receiver. \n" \
                "EXPN          Expands a mailing list.\n" \
                "EHLO          Same as HELO but tells the server that the client may want to use the Extended SMTP (ESMTP) protocol instead.\n"
-        CommonFunctions.sendData(data, socket, self.secrServer)
+        CommonFunctions.sendData(data, module, self.securityServer)
 
-    def code214(self, argument, socket):
+    def code214(self, argument, module):
         if argument == "HELO":
             data = "The HELO command is the command used by the host sending the command to identify itself; the command may be interpreted as saying \"Hello, I am <domain>\" \n" \
                    "USAGE: "
@@ -411,105 +410,105 @@ class serverInstance:
         elif argument == "EHLO":
             data = "Same as HELO but tells the server that the client may want to use the Extended SMTP (ESMTP) protocol instead.\n" \
                    "USAGE: "
-        CommonFunctions.sendData(data, socket, self.secrServer)
+        CommonFunctions.sendData(data, module, self.securityServer)
 
 
-    def code220(self, socket):
+    def code220(self, module):
         data = "220 " + serverDomain + " Simple Mail Transfer Service Ready"
-        CommonFunctions.sendData(data, socket, self.secrServer)
+        CommonFunctions.sendData(data, module, self.securityServer)
 
 
-    def code221(self, socket):
+    def code221(self, module):
         data = "221 " + serverDomain + " Service closing transmission channel"
-        CommonFunctions.sendData(data, socket, self.secrServer)
+        CommonFunctions.sendData(data, module, self.securityServer)
 
 
-    def code250(self, message, socket):
+    def code250(self, message, module):
         data = "250" + message
-        CommonFunctions.sendData(data, socket, self.secrServer)
+        CommonFunctions.sendData(data, module, self.securityServer)
 
 
-    def code251(self, socket, path):
+    def code251(self, module, path):
         # path = <forward-path>
         data = "251 User not local; will forward to " + path
-        CommonFunctions.sendData(data, socket, self.secrServer)
+        CommonFunctions.sendData(data, module, self.securityServer)
 
 
-    def code354(self, socket):
+    def code354(self, module):
         data = "354 Start mail input; end with <CRLF>.<CRLF>"
-        CommonFunctions.sendData(data, socket, self.secrServer)
+        CommonFunctions.sendData(data, module, self.securityServer)
 
 
-    def code421(self, socket):
+    def code421(self, module):
         data = "421" + serverDomain + " Service not available, closing transmission channel"
-        CommonFunctions.sendData(data, socket, self.secrServer)
+        CommonFunctions.sendData(data, module, self.securityServer)
 
 
-    def code450(self, socket):
+    def code450(self, module):
         data = "450 Requested mail action not taken: mailbox unavailable"
         # [E.g., mailbox busy]
-        CommonFunctions.sendData(data, socket, self.secrServer)
+        CommonFunctions.sendData(data, module, self.securityServer)
 
 
-    def code451(self, socket):
+    def code451(self, module):
         data = "451 Requested action aborted: local error in processing"
-        CommonFunctions.sendData(data, socket, self.secrServer)
+        CommonFunctions.sendData(data, module, self.securityServer)
 
 
-    def code452(self, socket):
+    def code452(self, module):
         data = "452 Requested action not taken: insufficient system storage"
-        CommonFunctions.sendData(data, socket, self.secrServer)
+        CommonFunctions.sendData(data, module, self.securityServer)
 
 
-    def code500(self, socket):
+    def code500(self, module):
         data = "500 Syntax error, command unrecognized"
         # [This may include errors such as command line too long]
-        CommonFunctions.sendData(data, socket, self.secrServer)
+        CommonFunctions.sendData(data, module, self.securityServer)
 
 
-    def code501(self, message, socket):
+    def code501(self, message, module):
         data = "501 Syntax error in parameters or arguments" + message
-        CommonFunctions.sendData(data, socket, self.secrServer)
+        CommonFunctions.sendData(data, module, self.securityServer)
 
 
-    def code502(self, socket):
+    def code502(self, module):
         data = "502 Command not implemented"
-        CommonFunctions.sendData(data, socket, self.secrServer)
+        CommonFunctions.sendData(data, module, self.securityServer)
 
 
-    def code503(self, message, socket):
+    def code503(self, message, module):
         data = "503 Bad sequence of commands" + message
-        CommonFunctions.sendData(data, socket, self.secrServer)
+        CommonFunctions.sendData(data, module, self.securityServer)
 
 
-    def code504(self, socket):
+    def code504(self, module):
         data = "504 Command parameter not implemented"
-        CommonFunctions.sendData(data, socket, self.secrServer)
+        CommonFunctions.sendData(data, module, self.securityServer)
 
 
-    def code550(self, message, socket):
+    def code550(self, message, module):
         data = "550 Requested action not taken: mailbox unavailable" + message
         # [E.g., mailbox not found, no access]
-        CommonFunctions.sendData(data, socket, self.secrServer)
+        CommonFunctions.sendData(data, module, self.securityServer)
 
 
-    def code551(self, socket, path):
+    def code551(self, module, path):
         # path = <forward-path>
         data = "551 User not local; please try " + path
-        CommonFunctions.sendData(data, socket, self.secrServer)
+        CommonFunctions.sendData(data, module, self.securityServer)
 
 
-    def code552(self, socket):
+    def code552(self, module):
         data = "552 Requested mail action aborted: exceeded storage allocation"
-        CommonFunctions.sendData(data, socket, self.secrServer)
+        CommonFunctions.sendData(data, module, self.securityServer)
 
 
-    def code553(self, message, socket):
+    def code553(self, message, module):
         data = "553 Requested action not taken: mailbox name not allowed" + message
         # [E.g., mailbox syntax incorrect]
-        CommonFunctions.sendData(data, socket, self.secrServer)
+        CommonFunctions.sendData(data, module, self.securityServer)
 
 
-    def code554(self, message, socket):
+    def code554(self, message, module):
         data = "554 Transaction failed" + message
-        CommonFunctions.sendData(data, socket, self.secrServer)
+        CommonFunctions.sendData(data, module, self.securityServer)

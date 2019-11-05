@@ -1,18 +1,18 @@
 import asyncore
 import socket
-import Server
+import ResponseProcessor
 import CommonFunctions
 
-serverInstance = Server.serverInstance()
+responseProcessorInstance = ResponseProcessor.responseProcessorInstance()
 
 
 class EchoHandler(asyncore.dispatcher_with_send):
-    global serverInstance
+    global responseProcessorInstance
 
     def handle_read(self):
         data = self.recv(8192)
         if data:
-            serverInstance.commandRouter(data, self)
+            responseProcessorInstance.commandRouter(data, self)
 
 
 class EchoServer(asyncore.dispatcher):
@@ -33,5 +33,5 @@ class EchoServer(asyncore.dispatcher):
             #Server.code220(sock)  # TODO
 
 
-server = EchoServer('127.0.0.1', 8080)
+server = EchoServer('127.0.0.1', 9999)
 asyncore.loop()

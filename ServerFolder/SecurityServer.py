@@ -18,7 +18,7 @@ class securityServer:
         self.transferKey = 0
         self.cipher = blowfish.Cipher("Hello World".encode())
 
-    def initiateKeyExchangeServer(self, data, socket):
+    def initiateKeyExchangeServer(self, data, module):
         A = self.g ^ self.a % self.p
         if self.state == 0 and data.upper() == "INIT":
             message = "Diffie-Hellman Exchange Initiated, sending in the following order" \
@@ -27,22 +27,22 @@ class securityServer:
             # Tried several times and without a delay, either via time.sleep or
             # by priting the data, it won't work properly.
 
-            CommonFunctions.sendDataKeyExchange(message, socket)
-            time.sleep(0.0005)
-            CommonFunctions.sendDataKeyExchange(str(self.p), socket)
+            CommonFunctions.sendDataKeyExchange(message, module)
+            time.sleep(0.005)
+            CommonFunctions.sendDataKeyExchange(str(self.p), module)
             # print("p" + str(self.p))
-            time.sleep(0.0005)
-            CommonFunctions.sendDataKeyExchange(str(self.g), socket)
+            time.sleep(0.005)
+            CommonFunctions.sendDataKeyExchange(str(self.g), module)
             # print("g" + str(self.g))
-            time.sleep(0.0005)
-            CommonFunctions.sendDataKeyExchange(str(A), socket)
+            time.sleep(0.005)
+            CommonFunctions.sendDataKeyExchange(str(A), module)
             # print("A"+str(A))
-            time.sleep(0.0005)
+            time.sleep(0.005)
             self.state = 1
         elif self.state == 1:
             B = int(data)
             self.transferKey = B ^ self.a % self.p
-            socket.send(self.biv)
+            module._send_data(self.biv)
             self.initializeEncryption()
             self.state = 2
         elif self.state == 2:

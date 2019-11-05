@@ -70,16 +70,16 @@ def userpassValidate(argument):
     else:
         return False
 
-def sendDataKeyExchange(data, socket):
+def sendDataKeyExchange(data, module):
     data = data.encode()
-    socket.send(data)
+    module._send_data(data)
 
 
-def sendData(data, socket, SecrServer):
+def sendData(data, module, SecurityServer):
     data = data.encode()
-    data = SecrServer.encryptData(data)
-    socket.send(data)
+    data = SecurityServer.encryptData(data)
+    module._send_data(data)
 
 
-def decryptData(data, SecServ):
-    return SecServ.decryptData(data)
+def decryptData(data, SecurityServer):
+    return SecurityServer.decryptData(data)

@@ -1,8 +1,8 @@
 import socket
-import SecurityClient
+import SecurityClientDEPRECATED
 import time
 HOST = '127.0.0.1'  # The server's hostname or IP address
-PORT = 8080         # The port used by the server
+PORT = 9999         # The port used by the server
 clientDomain = "AS-CLIENT.DERBY.AC.UK"
 running = 1
 
@@ -15,9 +15,9 @@ def recieveData(socket,SecClient):
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.connect((HOST, PORT))
-    # data = s.recv(8192)
+    # data = s.recv(4096)
     # print('Received', data.decode())  # server welcome message
-    SecClient = SecurityClient.securityClient()
+    SecClient = SecurityClientDEPRECATED.securityClient()
     message = "init"
     s.sendall(message.encode())
     transferKey = SecClient.initiateKeyExchangeClient(s)
@@ -31,8 +31,10 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.sendall(message)
         time.sleep(0.05)
         data = recieveData(s,SecClient)
-        while len(data) >= 4 and data[3] == "-":
+        while len(data) >= 4 and data[3] == "+":
             print(data)
             data = recieveData(s, SecClient)
         print(data)
 
+
+#login thanos thanos
