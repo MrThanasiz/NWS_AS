@@ -43,24 +43,26 @@ def argumentOnly(string):
         stringSplit = string.split(" ", 1)
         return stringSplit[1]
 
-def mailValidation(argument):
-    charset = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.@"
-
+def mailValidationSMTP(argument):
     if argument[0] == "<" and argument[-1] == ">":
         argument = argument[1:-1]
-        argument = argument.split("@")
-        if len(argument) == 2:
-            if all(char in charset for char in argument[0]):
-                if len(argument[1].split(".")) >1:
-                    return "OK"
-                else:
-                    return "Domain name must include atleast 1 period (.)"
-            else:
-                return "Sorry, only letters (a-Z), numbers (0-9), and periods (.) are allowed."
-        else:
-            return "There must be exactly 1 at symbol (@) in the address"
+        return mailValidation(argument)
     else:
-        return "Sender address must be enclosed in \"< >\" "
+        return "Mail address must be enclosed in \"< >\" "
+
+def mailValidation(argument):
+    charset = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.@"
+    argument = argument.split("@")
+    if len(argument) == 2:
+        if all(char in charset for char in argument[0]):
+            if len(argument[1].split(".")) >1:
+                return "OK"
+            else:
+                return "Domain name must include atleast 1 period (.)"
+        else:
+            return "Sorry, only letters (a-Z), numbers (0-9), and periods (.) are allowed."
+    else:
+        return "There must be exactly 1 at symbol (@) in the address"
 
 
 def userpassValidate(argument):

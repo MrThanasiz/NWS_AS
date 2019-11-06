@@ -45,6 +45,8 @@ class NWSThreadedClient ():
         while True:
             userInput = input("Send a message:")
             message = self._module.securityClient.encryptData(userInput)
+            if len(message) == 0:
+                message = message + " "
             if message[0] == ".":
                 message = "." + message
             self._module.create_message(message)

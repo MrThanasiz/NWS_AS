@@ -3,16 +3,13 @@ import os
 import SecurityServer
 import pickle
 
-# accountUserRegistry & accountEmailRegistry aren't global here
-# doing so would mean changing implementation of commands that apply to both
-
 
 class accountUser:
-    def __init__(self, username, passwordHashed, salt, mailSet):
+    def __init__(self, username, passwordHashed, salt, mailset):
         self.username = username
         self.passwordHashed = passwordHashed
         self.salt = salt
-        self.mailSet = mailSet
+        self.mailset = mailset
 
     def getIdentifier(self):
         return self.username
@@ -41,9 +38,9 @@ class accountEmail:
 
 
 class mailingList:
-    def __init__(self, name, mailList):
+    def __init__(self, name, mailset):
         self.name = name
-        self.mailList = mailList
+        self.mailset = mailset
 
     def getIdentifier(self):
         return self.name
@@ -85,36 +82,69 @@ class email:
 def accountUserListEmail(accountUserRegistry, username):
     for account in accountUserRegistry:
         if account.username == username:
-            print("ok")
+            maillist = []
+            mailid = 0
+            for mail in account.mailset:
+                if os.path.isdir("emails/" + mail):
+                    for file in os.listdir("emails/" + mail):
+                        if file.endswith(".txt"):
+                            maillist.append([os.path.join("emails/" + mail, file),
+                            "ID: " + str(mailid) + " Date - Sender: " + file[:-4] + " Recipient: " + mail])
+                            mailid = mailid + 1
+            return maillist
 
-def accountUserViewEmail(accountUserRegistry, username, emailid):
-    print("ok")
+
+
+def accountUserGetEmail(accountUserRegistry, username, emailid):
+    maillist = accountUserListEmail(accountUserRegistry, username)
+    try:
+        f = open(maillist[emailid][0], 'r')
+        mail = f.read()
+        print(mail)
+        f.close()
+    except IndexError:
+        return "IDERROR"
+    else:
+        return mail
 
 def accountUserDeleteEmail(accountUserRegistry, username, emailid):
-    print("ok")
+    maillist = accountUserListEmail(accountUserRegistry, username)
+    try:
+        if os.path.exists(maillist[emailid][0]):
+            os.remove(maillist[emailid][0])
+            return "OK"
+        else:
+            return "NFERROR"
+    except IndexError:
+        return "IDERROR"
+    else:
+        return "OK"
 
 
 def accountUserEmailAdd(accountUserRegistry, username, address):
     for account in accountUserRegistry:
-        if account.username == username:
-            account.mailset.add(address)
+        if account.getIdentifier() == username:
+            if not accountUserEmailExists(accountUserRegistry, username, address):
+                account.mailset.append(address)
 
 
 def accountUserEmailExists(accountUserRegistry, username, address):
     for account in accountUserRegistry:
-        if account.username == username:
-            return True
+        if account.getIdentifier() == username:
+            for mail in account.mailset:
+                if mail == address:
+                    return True
     return False
 
 def accountUserEmailRemove(accountUserRegistry, username, address):
     for account in accountUserRegistry:
-        if account.username == username:
-            account.mailset.discard(address)
+        if account.getIdentifier() == username:
+            account.mailset.remove(address)
 
 
 def accountAdd(accountsRegistry, account):
     # Make sure to check that the account doesn't exist already
-    # input should be accountEmail type
+    # input should be account type
     accountsRegistry.append(account)
     return accountsRegistry
 
@@ -135,7 +165,7 @@ def accountExists(accountsRegistry, identity):
 
 def accountGet(accountsRegistry, identity):
     for account in accountsRegistry:
-        if account.getIdentifier == identity:
+        if account.getIdentifier() == identity:
             return account
 
 
@@ -144,8 +174,7 @@ def accountValidateLogin(accountsRegistry, identity, password):
     for account in accountsRegistry:
         if account.getIdentifier() == identity:
             return SecurityServer.validatePW(account.passwordHashed, account.salt, password)
-        else:
-            return False
+    print("doesn't exist")
     return False
 
 
@@ -162,7 +191,36 @@ def accountsLoad(accountsType):
     try:
         f = open(filename, "rb")
     except FileNotFoundError:
-        print("404 - Returing Empty Variable")
+        print("404 - Returing Test Variable")
+        if accountsType == "Email":
+            address = "testuser@gmail.com"
+            addressPass = "testpass"
+            hashedPassword, salt = SecurityServer.hashPW(addressPass)
+            tmail = accountEmail(address, hashedPassword, salt)
+            accountAdd(accountsRegistry, tmail)
+            address = "testuser@hotmail.com"
+            addressPass = "testpass"
+            hashedPassword, salt = SecurityServer.hashPW(addressPass)
+            tmail = accountEmail(address, hashedPassword, salt)
+            accountAdd(accountsRegistry, tmail)
+            address = "testuser@yahoo.com"
+            addressPass = "testpass"
+            hashedPassword, salt = SecurityServer.hashPW(addressPass)
+            tmail = accountEmail(address, hashedPassword, salt)
+            accountAdd(accountsRegistry, tmail)
+            #accountsSave(accountsRegistry, "Email")
+        elif accountsType == "User":
+            userName = "testuser"
+            userPass = "testpass"
+            hashedPassword, salt = SecurityServer.hashPW(userPass)
+            tuser = accountUser(userName, hashedPassword, salt, ["testuser@gmail.com", "testuser@yahoo.com"])
+            accountAdd(accountsRegistry, tuser)
+            #accountsSave(accountsRegistry, "User") # Will only be saved if something get's added.
+        elif accountsType == "MailList":
+            tmailList = mailingList("testlist", ["testuser@gmail.com", "testuser@hotmail.com", "testuser@yahoo.com"])
+            accountAdd(accountsRegistry, tmailList)
+        else:
+            print("Unknown type, returning empty variable")
         return accountsRegistry
     else:
         accountsRegistry = pickle.load(f)
@@ -182,15 +240,3 @@ def commandVRFY(accountEmailRegistry,prefix):
         return "250 " + "<" + acclist[0].getIdentifier() + ">"
     else:
         return "553 User ambiguous."
-
-#mailreg=[]
-#mail1 = accountEmail("thanos@gmail.com","oopsie","001")
-#accountAdd(mailreg,mail1)
-#mail1 = accountEmail("thanos@hotmail.com","oopsie","001")
-#accountAdd(mailreg,mail1)
-#mail1 = accountEmail("thanos1@hotmail.com","oopsie","001")
-#accountAdd(mailreg,mail1)
-
-#for account in mailreg:
-#    account.printAccountData()
-#print(commandVRFY(mailreg,"thanos"))

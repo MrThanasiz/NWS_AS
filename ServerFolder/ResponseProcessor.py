@@ -5,10 +5,6 @@ import Auditing
 import time
 
 serverDomain = "AS-SERVER.DERBY.AC.UK"
-accountEmailRegistry = Storage.accountsLoad("Email")
-accountUserRegistry = Storage.accountsLoad("User")
-emailListRegistry = Storage.accountsLoad("MailList")
-print("FILES LOADED")
 commandsUnimplemented = {"SOML", "SEND", "SAML", "TURN"}  # Set containing unimplemented commands.
 commandsAnytime = {"NOOP", "EXPN", "VRFY", "HELP", "QUIT"}  # Set of commands that can be executed at any time.
 commandsImplemented = {"HELO","QUIT","MAIL FROM:","RCPT TO:","DATA","RSET","NOOP", "EXPN", "VRFY", "HELP","EHLO"}
@@ -20,6 +16,12 @@ class responseProcessor:
         self.state = "keyExchange"
         self.transferKey = 0
         self.securityServer = SecurityServer.securityServer()
+
+        self.accountEmailRegistry = Storage.accountsLoad("Email")
+        self.accountUserRegistry = Storage.accountsLoad("User")
+        self.emailListRegistry = Storage.accountsLoad("MailList")
+
+        print("FILES LOADED")
         self.subStateMail = "init"
         self.mailFromBuffer = ""
         self.rcptBuffer = []
@@ -113,12 +115,16 @@ class responseProcessor:
             self.commandADDMAIL(argument, module)
         elif command == "RMVMAIL":
             self.commandRMVMAIL(argument, module)
-        elif command == "HELO":
-            self.commandHELO(argument, module)
-        elif command == "EHLO":
-            self.commandEHLO(argument, module)
+        elif command == "MYMAILS":
+            self.commandMYMAILS(module)
+        elif command == "LISTMAIL":
+            self.commandLISTMAIL(module)
+        elif command == "VIEWMAIL":
+            self.commandVIEWMAIL(argument, module)
+        elif command == "DELMAIL":
+            self.commandDELMAIL(argument, module)
         elif command == "MAIL FROM:":
-            self.commandMAIL(argument, module)
+            self.commandMAIL(dataDec, module)
         else:
             self.code500(module)
 
@@ -153,7 +159,7 @@ class responseProcessor:
 
         elif self.subStateMail == "rcpt":
             if command == "RCPT TO:":
-                validity = CommonFunctions.mailValidation(argument)
+                validity = CommonFunctions.mailValidationSMTP(argument)
                 if validity == "OK":
                     self.rcptBuffer.append(argument[1:-1])
                     self.code250(" OK", module)
@@ -187,21 +193,22 @@ class responseProcessor:
 
     def commandREGISTER(self, argument, module):
         userName = CommonFunctions.firstWord(argument)
-        userPass = CommonFunctions.secondWord(argument)
-        hashedPassword, salt = SecurityServer.hashPW(userPass)
-        tuser = Storage.accountUser(userName, hashedPassword, salt, [])
-        global accountUserRegistry
-        Storage.accountAdd(accountUserRegistry, tuser)
-        Storage.accountsSave(accountUserRegistry, "User")
-        self.code250(" Account Registered Successfuly, Log in.", module)
+        if Storage.accountExists(self.accountUserRegistry, userName):
+            self.code554(", account already exists.", module)
+        else:
+            userPass = CommonFunctions.secondWord(argument)
+            hashedPassword, salt = SecurityServer.hashPW(userPass)
+            tuser = Storage.accountUser(userName, hashedPassword, salt, ["",""])
+            Storage.accountAdd(self.accountUserRegistry, tuser)
+            Storage.accountsSave(self.accountUserRegistry, "User")
+            self.code250(" Account Registered Successfuly, Log in.", module)
 
 
     def commandLOGIN(self, argument, module):
         userName = CommonFunctions.firstWord(argument)
         userPass = CommonFunctions.secondWord(argument)
-        global accountUserRegistry
-        if Storage.accountValidateLogin(accountUserRegistry, userName, userPass):
-            self.currentUser = Storage.accountGet(accountUserRegistry, userName)
+        if Storage.accountValidateLogin(self.accountUserRegistry, userName, userPass):
+            self.currentUser = Storage.accountGet(self.accountUserRegistry, userName)
             self.state = "greetings"
             Auditing.logLoginAttempt(userName,True)
             self.code250(" Logged in successfully", module)
@@ -217,15 +224,16 @@ class responseProcessor:
         self.clientDomain = "-"
         self.code250(" Logged out successfully", module)
 
-    def commandMAIL(self, argument, module):
+    def commandMAIL(self, dataDec, module):
+        argument = CommonFunctions.argumentOnly(dataDec)
         if argument == "-":
             self.code501(" You need to specify the sender address.", module)
         else:
-            validity = CommonFunctions.mailValidation(argument)
+            validity = CommonFunctions.mailValidationSMTP(argument)
             if validity == "OK":
                 self.state = "mail"
                 self.subStateMail = "init"
-                self.sequenceMAIL(dataDec, module)
+                self.stateMail(dataDec, module)
             else:
                 self.code501(validity, module)
 
@@ -268,8 +276,7 @@ class responseProcessor:
 
     def commandVRFY(self, argument, module):
         if argument != "-" and CommonFunctions.numberOfWords(data) == 2:
-            global accountEmailRegistry
-            data = Storage.commandVRFY(accountEmailRegistry, argument)
+            data = Storage.commandVRFY(self.accountEmailRegistry, argument)
             CommonFunctions.sendData(data, module, self.securityServer)
         else:
             self.code501("", module)
@@ -279,11 +286,11 @@ class responseProcessor:
         if self.clientDomain == "-":
             self.code550(" No access", module)
         else:
-            if Storage.accountExists(emailListRegistry, argument):
-                mailListAcc = Storage.accountGet(emailListRegistry, argument)
-                for i in range(len(mailListAcc.mailList) - 1):
-                    self.code250("-" + mailListAcc.mailList[i], module)
-                self.code250(" " + mailListAcc.mailList[-1], module)
+            if Storage.accountExists(self.emailListRegistry, argument) and len(mailListAcc.mailset) >= 1:
+                mailListAcc = Storage.accountGet(self.emailListRegistry, argument)
+                for i in range(len(mailListAcc.mailset) - 1):
+                    self.code250("-" + mailListAcc.mailset[i], module)
+                self.code250(" " + mailListAcc.mailset[-1], module)
             else:
                 self.code550(",  not found", module)
 
@@ -320,28 +327,25 @@ class responseProcessor:
         mailValid = CommonFunctions.mailValidation(address)
         if mailValid == "OK":
             if CommonFunctions.userpassValidate(addressPass):
-                userName = CommonFunctions.firstWord(argument)
-                userPass = CommonFunctions.secondWord(argument)
-                hashedPassword, salt = SecurityServer.hashPW(userPass)
+                hashedPassword, salt = SecurityServer.hashPW(addressPass)
                 tmail = Storage.accountEmail(address, hashedPassword, salt)
-                global accountEmailRegistry
-                Storage.accountAdd(accountEmailRegistry, tmail)
-                Storage.accountsSave(accountEmailRegistry, "Email")
+                Storage.accountAdd(self.accountEmailRegistry, tmail)
+                Storage.accountsSave(self.accountEmailRegistry, "Email")
                 self.code250(" Email Account Registered Successfuly. Don't forget to add it to your User Account", module)
             else:
                 self.code503(" Password must be atleast 6 characters long and CAN contain numbers, letters including the following symbols !@#$%^&*()-=_+,.?", module)
         else:
             self.code501(mailValid, module)
+
     def commandADDMAIL(self, argument, module):
         address = CommonFunctions.firstWord(argument)
         addressPass = CommonFunctions.secondWord(argument)
         mailValid = CommonFunctions.mailValidation(address)
         if mailValid == "OK":
             if CommonFunctions.userpassValidate(addressPass):
-                global accountEmailRegistry
-                if Storage.accountValidateLogin(accountEmailRegistry, address, addressPass):
-                    Storage.accountUserEmailAdd(accountUserRegistry, self.currentUser.getIdentifier(), address)
-                    Storage.accountsSave(accountUserRegistry, "User")
+                if Storage.accountValidateLogin(self.accountEmailRegistry, address, addressPass):
+                    Storage.accountUserEmailAdd(self.accountUserRegistry, self.currentUser.getIdentifier(), address)
+                    Storage.accountsSave(self.accountUserRegistry, "User")
                     self.code250(" Email added successfully", module)
                 else:
                     self.code550(" Email Password pair doesn't match anything.", module)
@@ -354,15 +358,63 @@ class responseProcessor:
         address = argument
         mailValid = CommonFunctions.mailValidation(address)
         if mailValid == "OK":
-                global accountEmailRegistry
-                if Storage.accountUserEmailExists(accountUserRegistry, self.currentUser.getIdentifier(), address):
-                    Storage.accountUserEmailRemove(accountUserRegistry, self.currentUser.getIdentifier(), address)
-                    Storage.accountsSave(accountUserRegistry, "User")
+                if Storage.accountUserEmailExists(self.accountUserRegistry, self.currentUser.getIdentifier(), address):
+                    Storage.accountUserEmailRemove(self.accountUserRegistry, self.currentUser.getIdentifier(), address)
+                    Storage.accountsSave(self.accountUserRegistry, "User")
                     self.code250(" Email removed successfully", module)
                 else:
                     self.code550(" Email not in current users emails.", module)
         else:
             self.code501(mailValid, module)
+
+    def commandMYMAILS(self, module):
+        mailset = self.currentUser.mailset
+        if len(mailset) >= 1:
+            for i in range(len(mailset) - 1):
+                self.code250("-" + mailset[i],  module)
+            self.code250(" " + mailset[-1], module)
+        else:
+            self.code554(", no mails in your mailboxes",module)
+
+    def commandLISTMAIL(self, module):
+        maillist = Storage.accountUserListEmail(self.accountUserRegistry, self.currentUser.getIdentifier())
+        if len(maillist) >= 1:
+            for i in range(len(maillist) - 1):
+                self.code250("-" + maillist[i][1],  module)
+            self.code250(" " + maillist[-1][1], module)
+        else:
+            self.code554(", no mails in your mailboxes",module)
+    def commandVIEWMAIL(self, argument, module):
+        try:
+            emailid = int(argument)
+        except ValueError:
+            self.code501(" emailid can only be integer",module)
+        else:
+            contents = Storage.accountUserGetEmail(self.accountUserRegistry, self.currentUser.getIdentifier(), emailid)
+            if contents == "IDERROR":
+                self.code554(", mail id doesn't exist", module)
+            else:
+                splt = contents.splitlines()
+                if len(splt) >= 1:
+                    for i in range(len(splt) - 1):
+                        self.code250("-" + splt[i], module)
+                    self.code250(" " + splt[-1], module)
+                else:
+                    self.code554(", empty mail", module)
+    def commandDELMAIL(self, argument, module):
+        try:
+            emailid = int(argument)
+        except ValueError:
+            self.code501(" emailid can only be integer", module)
+        else:
+            returnCode = Storage.accountUserDeleteEmail(self.accountUserRegistry, self.currentUser.getIdentifier(), emailid)
+            if returnCode == "IDERROR":
+                self.code554(", mail id doesn't exist", module)
+            elif returnCode == "NFERROR":
+                self.code554(", mail file doesn't exist", module)
+            else:
+                self.code250(" OK",module)
+
 
     def code211(self, module):
         data = "For more information on a specific command, type HELP command-name \n" \
