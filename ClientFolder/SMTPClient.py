@@ -47,7 +47,7 @@ class NWSThreadedClient ():
 
             if len(userInput) == 0:  # This is used to prevent sending an empty message
                 userInput = userInput + " "
-            if userInput[0] == ".":  # This is used for the DATA part, is a "requirement" of RFC821
+            if userInput[0] == "." and len(userInput) > 1:  # This is used for the DATA part, is a "requirement" of RFC821
                 userInput = "." + userInput
 
             message = self._module.securityClient.encryptData(userInput)
