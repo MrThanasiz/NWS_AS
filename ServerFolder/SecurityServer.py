@@ -25,7 +25,7 @@ class securityServer:
                       ": p,g,A and waiting for B"
 
             # Tried several times and without a delay, either via time.sleep or
-            # by priting the data, it won't work properly.
+            # by priting the data, it wouldn't work properly.
 
             CommonFunctions.sendDataKeyExchange(message, module)
             time.sleep(0.005)

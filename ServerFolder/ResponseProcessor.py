@@ -7,8 +7,9 @@ import time
 serverDomain = "AS-SERVER.DERBY.AC.UK"
 commandsUnimplemented = {"SOML", "SEND", "SAML", "TURN"}  # Set containing unimplemented commands.
 commandsAnytime = {"NOOP", "EXPN", "VRFY", "HELP", "QUIT"}  # Set of commands that can be executed at any time.
-commandsImplemented = {"HELO","QUIT","MAIL FROM:","RCPT TO:","DATA","RSET","NOOP", "EXPN", "VRFY", "HELP","EHLO"}
- # primary use of commandsImplemented is for the command help
+commandsImplemented = {"HELO", "QUIT", "MAIL FROM:", "RCPT TO:", "DATA", "RSET", "NOOP", "EXPN", "VRFY", "HELP",
+                       "EHLO", "ADDMAIL", "REGMAIL", "RMVMAIL", "MYMAILS", "LISTMAIL", "VIEWMAIL", "DELMAIL"}
+# primary use of commandsImplemented is for the command help
 
 
 class responseProcessor:
@@ -246,8 +247,6 @@ class responseProcessor:
         self.clientDomain = argument
         message = "-" + serverDomain + " Hello " + self.clientDomain
         self.code250(message, module)
-        message = "-MMAN"
-        self.code250(message, module)
         message = "-LOGOUT"
         self.code250(message, module)
         message = "-EXPN"
@@ -260,8 +259,15 @@ class responseProcessor:
         self.code250(message, module)
         message = "-RMVMAIL"
         self.code250(message, module)
+        message = "-MYMAILS"
+        self.code250(message, module)
+        message = "-LISTMAIL"
+        self.code250(message, module)
+        message = "-VIEWMAIL"
+        self.code250(message, module)
+        message = "-DELMAIL"
+        self.code250(message, module)
         self.commandRSET(module)
-
 
     def commandRSET(self, module):
         if self.state != "greetings":
@@ -275,7 +281,7 @@ class responseProcessor:
 
 
     def commandVRFY(self, argument, module):
-        if argument != "-" and CommonFunctions.numberOfWords(data) == 2:
+        if argument != "-":
             data = Storage.commandVRFY(self.accountEmailRegistry, argument)
             CommonFunctions.sendData(data, module, self.securityServer)
         else:
@@ -286,8 +292,8 @@ class responseProcessor:
         if self.clientDomain == "-":
             self.code550(" No access", module)
         else:
+            mailListAcc = Storage.accountGet(self.emailListRegistry, argument)
             if Storage.accountExists(self.emailListRegistry, argument) and len(mailListAcc.mailset) >= 1:
-                mailListAcc = Storage.accountGet(self.emailListRegistry, argument)
                 for i in range(len(mailListAcc.mailset) - 1):
                     self.code250("-" + mailListAcc.mailset[i], module)
                 self.code250(" " + mailListAcc.mailset[-1], module)
@@ -307,12 +313,6 @@ class responseProcessor:
 
 
     def commandNOOP(self, module):
-        self.code250("+OK1", module)
-        time.sleep(0.1)
-        self.code250("+OK2", module)
-        time.sleep(0.1)
-        self.code250("+OKffafafdsf3", module)
-        time.sleep(0.1)
         self.code250(" OK", module)
 
 
@@ -428,40 +428,73 @@ class responseProcessor:
                "VRFY          Verfies a username exists.\n" \
                "NOOP          No action other than to send send an OK reply to the receiver. \n" \
                "EXPN          Expands a mailing list.\n" \
-               "EHLO          Same as HELO but tells the server that the client may want to use the Extended SMTP (ESMTP) protocol instead.\n"
+               "EHLO          Same as HELO but tells the server that the client may want to use the Extended SMTP (ESMTP) protocol instead.\n" \
+               "REGMAIL       Registers a new email address to the server. \n" \
+               "ADDMAIL       Adds a registered email address to the current users mail accounts list. \n" \
+               "RMVMAIL       Removes an email address from the current users mail list. \n" \
+               "MYMAILS       Displays the current users mail accounts list. \n" \
+               "LISTMAIL      Lists mails accessible to the current user with their corresponding ID. \n" \
+               "VIEWMAIL      Sends the client a copy of a mail associated with the ID provided. \n" \
+               "DELMAIL       Deletes the mail that is associated with the ID provided."
+
         CommonFunctions.sendData(data, module, self.securityServer)
+
 
     def code214(self, argument, module):
         if argument == "HELO":
             data = "The HELO command is the command used by the host sending the command to identify itself; the command may be interpreted as saying \"Hello, I am <domain>\" \n" \
-                   "USAGE: "
+                   "USAGE: HELO clientdomain"
         elif argument == "QUIT":
             data = "The QUIT command specifies that the receiver must send an OK reply, and then close the transmission channel. \n" \
-                   "USAGE: "
+                   "USAGE: QUIT"
         elif argument == "MAIL FROM:":
             data = "The MAIL FROM: command is used to initiate a mail transaction in which the mail data is delivered to one or more mailboxes. The argument field contains a reverse-path. \n" \
-                   "USAGE: "
+                   "USAGE: MAIL FROM: <senderemail@domain.com>"
         elif argument == "RCPT TO:":
-            data = "The RCPT TO: command is used to identify an individual recipient of the mail data; multiple recipients are specified by multiple use of this command."
+            data = "The RCPT TO: command is used to identify an individual recipient of the mail data; multiple recipients are specified by multiple use of this command. \n" \
+                   "USAGE: RCPT TO: <recipientmail@domain.com>"
         elif argument == "DATA":
             data = "The DATA command causes the mail data from this command to be appended to the mail data buffer. The mail data may contain any of the 128 ASCII character codes. The mail data is terminated by a line containing only a period, that is the character sequence \"<CRLF>.<CRLF>\" \n" \
-                   "USAGE: "
+                   "USAGE: DATA"
         elif argument == "HELP":
             data = "The HELP command provides help information for SMTP commands, if used with a command returns information on that command. \n" \
-                   "USAGE: "
+                   "USAGE: HELP COMMAND"
         elif argument == "RSET":
-            data = "The RSET command specifies that the current mail transaction is to be aborted. Any stored sender, recipients, and mail data must be discarded, and all buffers and state tables cleared. The server will send an OK reply."
+            data = "The RSET command specifies that the current mail transaction is to be aborted. Any stored sender, recipients, and mail data must be discarded, and all buffers and state tables cleared. The server will send an OK reply. \n" \
+                   "USAGE: RSET"
         elif argument == "VRFY":
             data = "The VRFY command asks the receiver to confirm that the argument identifies a user. If it is a user name, the full name of the user (if known) and the fully specified mailbox are returned.  \n" \
-                   "USAGE: "
+                   "USAGE: VRFY name"
         elif argument == "NOOP":
-            data = "The NOOP command does not affect any parameters or previously entered commands. It specifies no action other than that the receiver send an OK reply."
+            data = "The NOOP command does not affect any parameters or previously entered commands. It specifies no action other than that the receiver send an OK reply. \n" \
+                   "USAGE: NOOP"
         elif argument == "EXPN":
             data = "The EXPN command asks the receiver to confirm that the argument identifies a mailing list, and if so, to return the membership of that list. The full name of the users (if known) and the fully specified mailboxes are returned in a multiline reply. \n" \
-                   "USAGE: "
+                   "USAGE: EXPN nameoflist"
         elif argument == "EHLO":
             data = "Same as HELO but tells the server that the client may want to use the Extended SMTP (ESMTP) protocol instead.\n" \
-                   "USAGE: "
+                   "USAGE: EHLO clientdomain"
+        elif argument == "REGMAIL":
+            data = "Registers a new email address to the server. \n " \
+                   "USAGE: REGMAIL email@domain.com password"
+        elif argument == "ADDMAIL":
+            data = "Adds a registered email address to the current users mail accounts list. \n " \
+                   "USAGE: ADDMAIL email@domain.com password"
+        elif argument == "RMVMAIL":
+            data = "Removes an email address from the current users mail list. \n " \
+                   "USAGE: RMVMAIL email@domain.com"
+        elif argument == "MYMAILS":
+            data = "Displays the current users mail accounts list. \n " \
+                   "USAGE: MYMAILS"
+        elif argument == "LISTMAIL":
+            data = "Lists mails accessible to the current user with their corresponding ID. \n " \
+                   "USAGE: LISTMAIL"
+        elif argument == "VIEWMAIL":
+            data = "Sends the client a copy of a mail associated with the ID provided. \n " \
+                   "USAGE: VIEWMAIL 2"
+        elif argument == "DELMAIL":
+            data = "Deletes the mail that is associated with the ID provided. \n " \
+                   "USAGE: DELMAIL 2"
         CommonFunctions.sendData(data, module, self.securityServer)
 
 

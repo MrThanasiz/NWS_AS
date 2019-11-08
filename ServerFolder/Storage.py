@@ -235,7 +235,7 @@ def commandVRFY(accountEmailRegistry,prefix):
         if split[0]==prefix:
             acclist.append(account)
     if len(acclist) == 0:
-        return "550 String does not match anything."
+        return "550 No such user."
     elif len(acclist) == 1:
         return "250 " + "<" + acclist[0].getIdentifier() + ">"
     else:

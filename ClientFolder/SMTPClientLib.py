@@ -28,27 +28,27 @@ class Module (Thread):
         self._selector.register(self._sock, events, data=None)
 
     def run(self):
-            try:
-                while True:
-                    events = self._selector.select(timeout=1)
-                    for key, mask in events:
-                        message = key.data
-                        try:
-                            if mask & selectors.EVENT_READ:
-                                self._read()
-                            if mask & selectors.EVENT_WRITE and not self._outgoing_buffer.empty():
-                                self._write()
-                        except Exception:
-                            print(
-                                "main: error: exception for",
-                                f"{self._addr}:\n{traceback.format_exc()}",
-                            )
-                            self._sock.close()
-                    # Check for a socket being monitored to continue.
-                    if not self._selector.get_map():
-                        break
-            finally:
-                self._selector.close()
+        try:
+            while True:
+                events = self._selector.select(timeout=1)
+                for key, mask in events:
+                    message = key.data
+                    try:
+                        if mask & selectors.EVENT_READ:
+                            self._read()
+                        if mask & selectors.EVENT_WRITE and not self._outgoing_buffer.empty():
+                            self._write()
+                    except Exception:
+                        print(
+                            "main: error: exception for",
+                            f"{self._addr}:\n{traceback.format_exc()}",
+                        )
+                        self._sock.close()
+                # Check for a socket being monitored to continue.
+                if not self._selector.get_map():
+                    break
+        finally:
+            self._selector.close()
 
     def _read(self):
         try:

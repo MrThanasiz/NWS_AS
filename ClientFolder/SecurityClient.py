@@ -13,6 +13,7 @@ class securityClient:
         self.cipher = blowfish.Cipher(("10"+"0000").encode())
         self.state = "init"
     def messageRouter(self, message, module):
+        # diffie-hellman key exchange sequence
         if self.state == "init":
             print(message)
             self.state = "p"

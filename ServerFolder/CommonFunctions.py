@@ -1,8 +1,10 @@
 import SecurityServer
 
+
 def numberOfWords(string):
     stringSplit = string.split(" ")
     return len(stringSplit)
+
 
 def firstWord(string):
     stringSplit = string.split(" ")
@@ -15,6 +17,7 @@ def secondWord(string):
         return stringSplit[1]
     else:
         return "-"
+
 
 def commandOnly(string):
     word1 = firstWord(string).upper()
@@ -43,12 +46,14 @@ def argumentOnly(string):
         stringSplit = string.split(" ", 1)
         return stringSplit[1]
 
+
 def mailValidationSMTP(argument):
     if argument[0] == "<" and argument[-1] == ">":
         argument = argument[1:-1]
         return mailValidation(argument)
     else:
         return "Mail address must be enclosed in \"< >\" "
+
 
 def mailValidation(argument):
     charset = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.@"
@@ -71,6 +76,7 @@ def userpassValidate(argument):
         return True
     else:
         return False
+
 
 def sendDataKeyExchange(data, module):
     data = data.encode()
