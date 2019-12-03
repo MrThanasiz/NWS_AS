@@ -124,6 +124,8 @@ class responseProcessor:
             self.commandVIEWMAIL(argument, module)
         elif command == "DELMAIL":
             self.commandDELMAIL(argument, module)
+        elif command == "MAIL":  # added so that if its just mail and from is missing it throws a 501 error
+            self.code501(" valid parameter is FROM:", module)
         elif command == "MAIL FROM:":
             self.commandMAIL(dataDec, module)
         else:
@@ -151,7 +153,7 @@ class responseProcessor:
             self.commandsAnytimeRouter(dataDec, module)
 
         elif command == "RSET":
-            self.commandRSET()
+            self.commandRSET(module)
 
         elif self.subStateMail == "init":
             self.mailFromBuffer = argument[1:-1]
