@@ -30,7 +30,7 @@ class responseProcessor:
         self.clientDomain = "-"
         self.currentUser = []
 
-    def commandRouter(self, dataEnc, module):
+    def commandRouter(self, dataEnc, module):  # Sends the commands to the function associated with the current state.
 
         if self.state == "keyExchange":
             dataDec = dataEnc.decode()
@@ -55,13 +55,13 @@ class responseProcessor:
             print("Command couldn't be routed state unknown")
             self.code421(module)
 
-    def stateKeyExchange(self, dataDec, module):
+    def stateKeyExchange(self, dataDec, module):  # Handles the Key Exchange State.
         self.transferKey, completed = (self.securityServer.initiateKeyExchangeServer(dataDec, module))
         if completed:
             self.state = "login"
             print(str(self.transferKey))
 
-    def stateLogin(self, dataDec, module):
+    def stateLogin(self, dataDec, module):  # Handles the login state.
         command = CommonFunctions.commandOnly(dataDec).upper()
         argument = CommonFunctions.argumentOnly(dataDec)
         if (command == "REGISTER" or command == "LOGIN") and CommonFunctions.numberOfWords(argument) == 2:
@@ -79,7 +79,7 @@ class responseProcessor:
                          "login <username> <password> \n"
                          "register <username> <password>", module)
 
-    def stateGreetings(self, dataDec, module):
+    def stateGreetings(self, dataDec, module): # Handles commands and data while in the Greetings state.
 
         command = CommonFunctions.commandOnly(dataDec)
         argument = CommonFunctions.argumentOnly(dataDec)
@@ -98,7 +98,7 @@ class responseProcessor:
         if self.clientDomain != "-":
             self.state = "default"
 
-    def stateDefault(self, dataDec, module):
+    def stateDefault(self, dataDec, module): # Handles commands while in the default state.
 
         command = CommonFunctions.commandOnly(dataDec)
         argument = CommonFunctions.argumentOnly(dataDec)
@@ -131,7 +131,7 @@ class responseProcessor:
         else:
             self.code500(module)
 
-    def stateMail(self, dataDec, module):
+    def stateMail(self, dataDec, module): # Handles incoming data and commands while in the mail state.
         command = CommonFunctions.commandOnly(dataDec)
         argument = CommonFunctions.argumentOnly(dataDec)
         print("State:" + self.state + " Data:" + dataDec + " Command:" + command + " argument:" + argument)
@@ -178,7 +178,7 @@ class responseProcessor:
                 self.code500(module)
 
 
-    def commandsAnytimeRouter(self, data, module):
+    def commandsAnytimeRouter(self, data, module): # Routes commands that can be used at any time.
         command = CommonFunctions.commandOnly(data)
         argument = CommonFunctions.argumentOnly(data)
         if command == "VRFY":
@@ -498,6 +498,9 @@ class responseProcessor:
             data = "Deletes the mail that is associated with the ID provided. \n " \
                    "USAGE: DELMAIL 2"
         CommonFunctions.sendData(data, module, self.securityServer)
+
+
+    # The following functions are used to send the error codes to the client.
 
 
     def code220(self, module):

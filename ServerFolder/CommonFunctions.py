@@ -18,6 +18,8 @@ def secondWord(string):
     else:
         return "-"
 
+# The 2 following functions are used to separate the command from the argument.
+
 
 def commandOnly(string):
     word1 = firstWord(string).upper()
@@ -83,7 +85,7 @@ def sendDataKeyExchange(data, module):
     module._send_data(data)
 
 
-def sendData(data, module, SecurityServer):
+def sendData(data, module, SecurityServer):  # This command is used to send data while not in the KeyExchange state.
     data = data.encode()
     data = SecurityServer.encryptData(data)
     module._send_data(data)
